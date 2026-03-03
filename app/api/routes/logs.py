@@ -14,10 +14,10 @@ from app.db.database import get_db
 
 
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/logs", tags=["logs"])
 
 
-@router.post("/logs", response_model=LogResponse)
+@router.post("/insert-log", response_model=LogResponse)
 def create_log(
         log : LogCreate,
         db : Session = Depends(get_db)

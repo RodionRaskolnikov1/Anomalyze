@@ -2,14 +2,8 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime
-import enum
 
-
-class LogLevel(str, enum.Enum):
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-    CRITICAL = "CRITICAL"
+from app.core.enums import LogLevel
 
 
 class LogCreate(BaseModel):
@@ -22,8 +16,7 @@ class LogCreate(BaseModel):
     actor_id: Optional[str] = None
     ip_address: Optional[str] = None
     request_id: Optional[str] = None
-
-    timestamp: Optional[datetime] = None
+    
     context: Optional[Dict[str, Any]] = None
 
 
@@ -39,7 +32,7 @@ class LogResponse(BaseModel):
     request_id: Optional[str]
 
     timestamp: datetime
-    context: Optional[Dict]
+    context: Optional[Dict[str, any]]
 
     class Config:
-        from_attributes = True  # For SQLAlchemy ORM
+        from_attributes = True 

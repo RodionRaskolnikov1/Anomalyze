@@ -2,17 +2,10 @@ from sqlalchemy import Column, String, DateTime, Enum
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.sql import func
 import uuid
-import enum
+
 
 from app.db.database import Base
-
-
-class LogLevel(str, enum.Enum):
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-    CRITICAL = "CRITICAL"
-
+from app.core.enums import LogLevel
 
 class Log(Base):
     __tablename__ = "logs"
@@ -25,7 +18,7 @@ class Log(Base):
     message = Column(String, nullable=True)
 
     actor_id = Column(String, nullable=True)
-    ip_address = Column(String, nullable=True)
+    ip_address = Column(String, index=True, nullable=True)
     request_id = Column(String, index=True, nullable=True)
 
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
