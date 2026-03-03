@@ -32,7 +32,7 @@ class LogResponse(BaseModel):
     request_id: Optional[str]
 
     timestamp: datetime
-    context: Optional[Dict[str, any]]
+    context: Optional[Dict[str, Any]]
 
     class Config:
         from_attributes = True 

@@ -22,9 +22,11 @@ def create_log_service(db : Session, log : LogCreate):
         
         return db_log
     
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise e
+        raise
     
     
+def get_logs_service(db : Session):
+    return db.query(Log).all()
 

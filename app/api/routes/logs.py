@@ -7,7 +7,8 @@ from app.schemas.log_schema import (
 )
 
 from app.services.log_service import (
-    create_log_service
+    create_log_service,
+    get_logs_service
 )
 
 from app.db.database import get_db
@@ -23,3 +24,9 @@ def create_log(
         db : Session = Depends(get_db)
     ):
     return create_log_service(db, log)
+
+
+
+@router.get("/", response_model=list[LogResponse])
+def get_all_logs(db : Session = Depends(get_db)):
+    return get_logs_service(db)
