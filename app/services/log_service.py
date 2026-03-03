@@ -27,6 +27,24 @@ def create_log_service(db : Session, log : LogCreate):
         raise
     
     
-def get_logs_service(db : Session):
-    return db.query(Log).all()
+def get_logs(service, level, ip_address, db : Session, limit, offset, start_time, end_time):
+    
+    query = db.query(Log)
+    
+    if service:
+        query = query.filter(Log.service == service)
+        
+    if level:
+        query = query.filter(Log.level == level)
+        
+    if ip_address:
+        query = query.filter(Log.ip_address == ip_address)
+        
+    if start_time:
+        query = query.filter(Log.timestamp >= start_time)
+
+    if end_time:
+        query = query.filter(Log.timestamp <= end_time)
+    
+    return query.order_by(Log.timestamp.desc()).offset(offset).limit(limit).all()
 
