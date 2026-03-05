@@ -9,5 +9,10 @@ def normalize_event(event_type : str) -> str:
     if "login" in event and "success" in event:
         return "AUTH_LOGIN_SUCCESS"
     
+    if "password" in event and "change" in event:
+        return "PASSWORD_CHANGE"
+    
+    if "system" in event and "error" in event:
+        return "SYSTEM_ERROR"
     
     return event_type.upper()

@@ -13,8 +13,15 @@ def run_detection_rules(db, log):
     if log.ip_address:
         detect_requestflood(db, log.ip_address)
         
-    if log.event_type == "AUTH_LOG_FAILED" and log.ip_address:
+    if log.event_type == "AUTH_LOGIN_FAILED" and log.ip_address:
         detect_bruteforce(db, log.ip_address)
+        detect_credential_stuffing(db, log.ip_address)
+    
+    if log.event_type == "PASSWORD_CHANGE" and log.actor_id:
+        detect_account_takeover(db, log.actor_id, log.ip_address)
+
+    if log.event_type == "SYSTEM_ERROR":
+        detect_system_error_spike(db)
 
 
 
@@ -105,8 +112,122 @@ def detect_requestflood(db : Session, ip_address : str):
         
 
 
+def detect_credential_stuffing(db: Session, ip_address: str):
+
+    try:
+        bucket = datetime.utcnow().strftime("%Y-%m-%d-%H-%M")
+
+        window_start = datetime.utcnow() - timedelta(minutes=5)
+
+        actor_count = (
+            db.query(func.count(func.distinct(Log.actor_id)))
+            .filter(
+                Log.ip_address == ip_address,
+                Log.event_type == "AUTH_LOGIN_FAILED",
+                Log.timestamp >= window_start
+            )
+            .scalar()
+        )
+
+        if actor_count > 10:
+
+            alert_key = f"CREDENTIAL_STUFFING:{ip_address}:{bucket}"
+
+            alert = Alert(
+                rule_name="CREDENTIAL_STUFFING",
+                severity="HIGH",
+                ip_address=ip_address,
+                alert_key=alert_key,
+                description="More than 10 unique actor_ids failed login from same IP within 5 minutes",
+                context={"unique_actor_count": actor_count}
+            )
+
+            db.add(alert)
+            db.commit()
+
+    except IntegrityError:
+        db.rollback()
         
         
+        
+def detect_account_takeover(db: Session, actor_id: str, current_ip: str):
+
+    try:
+        bucket = datetime.utcnow().strftime("%Y-%m-%d-%H-%M")
+
+        window_start = datetime.utcnow() - timedelta(minutes=5)
+
+        login_event = (
+            db.query(Log)
+            .filter(
+                Log.actor_id == actor_id,
+                Log.event_type == "AUTH_LOGIN_SUCCESS",
+                Log.timestamp >= window_start
+            )
+            .order_by(Log.timestamp.desc())
+            .first()
+        )
+
+        if not login_event:
+            return
+
+        if login_event.ip_address != current_ip:
+
+            alert_key = f"ACCOUNT_TAKEOVER:{actor_id}:{bucket}"
+
+            alert = Alert(
+                rule_name="ACCOUNT_TAKEOVER_SUSPECTED",
+                severity="HIGH",
+                ip_address=current_ip,
+                actor_id=actor_id,
+                alert_key=alert_key,
+                description="Password change shortly after login from different IP",
+                context={
+                    "login_ip": login_event.ip_address,
+                    "password_change_ip": current_ip
+                }
+            )
+
+            db.add(alert)
+            db.commit()
+
+    except IntegrityError:
+        db.rollback()
+
+
+def detect_system_error_spike(db: Session):
+
+    try:
+        bucket = datetime.utcnow().strftime("%Y-%m-%d-%H-%M")
+
+        window_start = datetime.utcnow() - timedelta(minutes=2)
+
+        error_count = (
+            db.query(func.count(Log.id))
+            .filter(
+                Log.event_type == "SYSTEM_ERROR",
+                Log.timestamp >= window_start
+            )
+            .scalar()
+        )
+
+        if error_count > 50:
+
+            alert_key = f"SYSTEM_ERROR_SPIKE:{bucket}"
+
+            alert = Alert(
+                rule_name="SYSTEM_ERROR_SPIKE",
+                severity="MEDIUM",
+                alert_key=alert_key,
+                description="More than 50 system errors detected within 2 minutes",
+                context={"error_count": error_count}
+            )
+
+            db.add(alert)
+            db.commit()
+
+    except IntegrityError:
+        db.rollback()
         
         
 '''
