@@ -4,7 +4,7 @@ from app.models.log import Log
 from app.schemas.log_schema import LogCreate
 
 from app.services.detection_service import (
-    detect_bruteforce
+    run_detection_rules
 )
 
 from app.services.event_normalizer import normalize_event
@@ -29,10 +29,9 @@ def create_log_service(db : Session, log : LogCreate):
         db.commit()
         db.refresh(db_log)
         
-        
-        if db_log.event_type == "AUTH_LOGIN_FAILED" and db_log.ip_address:
-            detect_bruteforce(db, db_log.ip_address)
-        
+        run_detection_rules(db, db_log)        
+            
+            
         return db_log
     
     except Exception:

@@ -8,6 +8,15 @@ from app.models.alerts import Alert
 from app.models.log import Log
 
 
+def run_detection_rules(db, log):
+    
+    if log.ip_address:
+        detect_requestflood(db, log.ip_address)
+        
+    if log.event_type == "AUTH_LOG_FAILED" and log.ip_address:
+        detect_bruteforce(db, log.ip_address)
+
+
 
 def detect_bruteforce(db : Session, ip_address : str):
     
@@ -56,6 +65,46 @@ def detect_bruteforce(db : Session, ip_address : str):
             db.commit()
         except IntegrityError:
             db.rollback()
+        
+        
+        
+        
+def detect_requestflood(db : Session, ip_address : str):
+    try:
+        bucket = datetime.utcnow().strftime("%Y-%m-%d-%H-%M")
+        
+        window_start = datetime.utcnow() - timedelta(seconds=60)
+        
+        request_count = (
+            db.query(Log)
+            .filter(
+                Log.ip_address == ip_address,
+                Log.timestamp >= window_start
+            )
+            .count()
+        )
+        
+        if request_count > 200:
+        
+            alert_key = f"REQUEST_FLOOD:{ip_address}:{bucket}"
+        
+            alert = Alert(
+                rule_name="REQUEST_FLOOD",
+                severity="MEDIUM",
+                ip_address=ip_address,
+                alert_key=alert_key,
+                description="More than 200 requests detected from same IP within 1 minute",
+                context={"request flooded": request_count}
+            )
+            
+            db.add(alert)
+            db.commit()
+        
+    except IntegrityError:
+        db.rollback()
+        
+
+
         
         
         

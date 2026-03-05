@@ -1,3 +1,4 @@
+
 def normalize_event(event_type : str) -> str:
     
     event = event_type.lower().replace("-", "_")
@@ -7,5 +8,6 @@ def normalize_event(event_type : str) -> str:
 
     if "login" in event and "success" in event:
         return "AUTH_LOGIN_SUCCESS"
+    
     
     return event_type.upper()
