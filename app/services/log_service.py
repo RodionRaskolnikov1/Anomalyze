@@ -3,12 +3,21 @@ from sqlalchemy.orm import Session
 from app.models.log import Log
 from app.schemas.log_schema import LogCreate
 
+from app.services.detection_service import (
+    detect_bruteforce
+)
+
+from app.services.event_normalizer import normalize_event
+
 def create_log_service(db : Session, log : LogCreate):
     
     try:
+        
+        normalized_event = normalize_event(log.event_type)
+        
         db_log = Log(
             service = log.service,
-            event_type = log.event_type,
+            event_type = normalized_event,
             level = log.level,
             message = log.message,
             actor_id = log.actor_id,
@@ -19,6 +28,10 @@ def create_log_service(db : Session, log : LogCreate):
         db.add(db_log)
         db.commit()
         db.refresh(db_log)
+        
+        
+        if db_log.event_type == "AUTH_LOGIN_FAILED" and db_log.ip_address:
+            detect_bruteforce(db, db_log.ip_address)
         
         return db_log
     
