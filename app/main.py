@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
-    logs
+    logs, alerts
 )
 
 Base.metadata.create_all(bind=engine)
@@ -20,3 +20,4 @@ app.add_middleware(
 )
 
 app.include_router(logs.router)
+app.include_router(alerts.router)

@@ -27,9 +27,10 @@ def run_detection_rules(db, log):
 
 def detect_bruteforce(db : Session, ip_address : str):
     
-    bucket = datetime.utcnow().strftime("%Y-%m-%d-%H")
+    now = datetime.utcnow()
+    bucket = now.strftime("%Y-%m-%d-%H")
     
-    ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
+    ten_minutes_ago = now - timedelta(minutes=10)
     
     failed_attempts = (
         db.query(func.count(Log.id))
@@ -78,9 +79,11 @@ def detect_bruteforce(db : Session, ip_address : str):
         
 def detect_requestflood(db : Session, ip_address : str):
     try:
-        bucket = datetime.utcnow().strftime("%Y-%m-%d-%H-%M")
         
-        window_start = datetime.utcnow() - timedelta(seconds=60)
+        now = datetime.utcnow()
+        bucket = now.strftime("%Y-%m-%d-%H-%M")
+        
+        window_start = now - timedelta(seconds=60)
         
         request_count = (
             db.query(Log)
@@ -115,9 +118,11 @@ def detect_requestflood(db : Session, ip_address : str):
 def detect_credential_stuffing(db: Session, ip_address: str):
 
     try:
-        bucket = datetime.utcnow().strftime("%Y-%m-%d-%H-%M")
-
-        window_start = datetime.utcnow() - timedelta(minutes=5)
+        
+        now = datetime.utcnow()
+        bucket = now.strftime("%Y-%m-%d-%H-%M")
+        
+        window_start = now - timedelta(minutes=5)
 
         actor_count = (
             db.query(func.count(func.distinct(Log.actor_id)))
@@ -153,8 +158,10 @@ def detect_credential_stuffing(db: Session, ip_address: str):
 def detect_account_takeover(db: Session, actor_id: str, current_ip: str):
 
     try:
-        bucket = datetime.utcnow().strftime("%Y-%m-%d-%H-%M")
 
+        now = datetime.utcnow()
+        bucket = now.strftime("%Y-%m-%d-%H-%M")
+        
         window_start = datetime.utcnow() - timedelta(minutes=5)
 
         login_event = (
@@ -190,7 +197,7 @@ def detect_account_takeover(db: Session, actor_id: str, current_ip: str):
 
             db.add(alert)
             db.commit()
-
+    
     except IntegrityError:
         db.rollback()
 
@@ -198,7 +205,9 @@ def detect_account_takeover(db: Session, actor_id: str, current_ip: str):
 def detect_system_error_spike(db: Session):
 
     try:
-        bucket = datetime.utcnow().strftime("%Y-%m-%d-%H-%M")
+
+        now = datetime.utcnow()
+        bucket = now.strftime("%Y-%m-%d-%H-%M")
 
         window_start = datetime.utcnow() - timedelta(minutes=2)
 
