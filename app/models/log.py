@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Enum, Index
+from sqlalchemy import Column, String, DateTime, Enum, Index, JSON
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.sql import func
 import uuid
@@ -23,7 +23,7 @@ class Log(Base):
 
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
-    context = Column(JSONB)
+    context = Column(JSON)
 
     __table_args__ = (
         Index("idx_ip_event_time", "ip_address", "event_type", "timestamp"),

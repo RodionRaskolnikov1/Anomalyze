@@ -1,4 +1,4 @@
-from app.db.database import Base, engine
+from app.db.database import Base, engine, engine1
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,7 +7,11 @@ from app.api.routes import (
     logs, alerts
 )
 
-Base.metadata.create_all(bind=engine)
+from apscheduler.schedulers.background import BackgroundScheduler
+from app.ml.ml_runner import run_ml_detection
+from app.db.database import SessionLocal
+
+Base.metadata.create_all(bind=engine1)
 
 app = FastAPI(title="Log-Analyzer")
 
@@ -21,3 +25,15 @@ app.add_middleware(
 
 app.include_router(logs.router)
 app.include_router(alerts.router)
+
+
+def ml_job():
+    db = SessionLocal()
+    try:
+        run_ml_detection(db)
+    finally:
+        db.close()
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(ml_job, "interval", minutes=5)
+scheduler.start()

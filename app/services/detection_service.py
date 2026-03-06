@@ -89,6 +89,7 @@ def detect_requestflood(db : Session, ip_address : str):
             db.query(Log)
             .filter(
                 Log.ip_address == ip_address,
+                Log.event_type == "API_REQUEST",
                 Log.timestamp >= window_start
             )
             .count()
@@ -162,7 +163,7 @@ def detect_account_takeover(db: Session, actor_id: str, current_ip: str):
         now = datetime.utcnow()
         bucket = now.strftime("%Y-%m-%d-%H-%M")
         
-        window_start = datetime.utcnow() - timedelta(minutes=5)
+        window_start = now - timedelta(minutes=5)
 
         login_event = (
             db.query(Log)

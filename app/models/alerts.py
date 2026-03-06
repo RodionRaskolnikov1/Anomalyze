@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Enum, Index
+from sqlalchemy import Column, String, DateTime, Enum, Index, Text, JSON
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.sql import func
 import uuid 
@@ -22,4 +22,4 @@ class Alert(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    context = Column(JSONB) 
+    context = Column(JSON) 

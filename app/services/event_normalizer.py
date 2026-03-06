@@ -15,4 +15,4 @@ def normalize_event(event_type : str) -> str:
     if "system" in event and "error" in event:
         return "SYSTEM_ERROR"
     
-    return event_type.upper()
+    return (event_type or "").upper()
