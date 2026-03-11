@@ -25,7 +25,7 @@ def build_ip_features(db : Session):
             
             func.count(func.distinct(Log.actor_id)).label("unique_users")
         )
-        #.filter(Log.timestamp >= window_start)
+        .filter(Log.timestamp >= window_start)
         .group_by(Log.ip_address)
         .all()
     )

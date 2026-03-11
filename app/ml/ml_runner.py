@@ -15,8 +15,8 @@ def run_ml_detection(db):
         alert = Alert(
             rule_name="ML_TRAFFIC_ANOMALY",
             severity="MEDIUM",
-            ip_address=row["ip"],
-            alert_key=f"ML_ANOMALY:{row['ip']}",
+            ip_address=row["ip_address"],
+            alert_key=f"ML_ANOMALY:{row['ip_address']}",
             description="ML detected abnormal traffic pattern",
             context=row.to_dict()
         )

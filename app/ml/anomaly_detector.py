@@ -10,7 +10,7 @@ def detect_anomalies(feature_df):
         random_state=42
     )
 
-    features = feature_df.drop(columns=["ip"])
+    features = feature_df.drop(columns=["ip_address"])
     
     preds = model.fit_predict(features)
     
