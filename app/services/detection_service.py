@@ -463,25 +463,23 @@ def detect_user_agent_rotation(db: Session, ip_address: str):
 
         window_start = now - timedelta(minutes=5)
 
-        # user_agent is expected in context JSON: {"user_agent": "Mozilla/5.0 ..."}
-        logs = (
-            db.query(Log.context)
+        # Extract user_agent from JSON context at DB level (no Python materialisation).
+        # Log.context["user_agent"].as_string() works with both SQLite JSON1 and PostgreSQL.
+        ua_expr = Log.context["user_agent"].as_string()
+
+        unique_agent_count = (
+            db.query(func.count(func.distinct(ua_expr)))
             .filter(
                 Log.ip_address == ip_address,
                 Log.event_type == "API_REQUEST",
                 Log.timestamp >= window_start,
-                Log.context.isnot(None)
+                Log.context.isnot(None),
+                ua_expr.isnot(None),
             )
-            .all()
-        )
+            .scalar()
+        ) or 0
 
-        unique_agents = {
-            row.context.get("user_agent")
-            for row in logs
-            if row.context and row.context.get("user_agent")
-        }
-
-        if len(unique_agents) > 10:
+        if unique_agent_count > 10:
 
             alert_key = f"USER_AGENT_ROTATION:{ip_address}:{bucket}"
 
@@ -491,7 +489,7 @@ def detect_user_agent_rotation(db: Session, ip_address: str):
                 ip_address=ip_address,
                 alert_key=alert_key,
                 description="More than 10 unique user-agents from same IP within 5 minutes",
-                context={"unique_agent_count": len(unique_agents)}
+                context={"unique_agent_count": unique_agent_count}
             )
 
             db.add(alert)
