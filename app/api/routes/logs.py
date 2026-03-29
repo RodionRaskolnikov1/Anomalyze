@@ -13,30 +13,33 @@ from app.services.log_service import (
 
 from app.db.database import get_db
 from app.core.enums import LogLevel
+from app.core.security import require_api_key
 
 
-
-router = APIRouter(prefix="/logs", tags=["logs"])
+router = APIRouter(
+    prefix="/logs",
+    tags=["logs"],
+    dependencies=[Depends(require_api_key)],
+)
 
 
 @router.post("/", response_model=LogResponse)
 def create_log(
-        log : LogCreate,
-        db : Session = Depends(get_db)
+        log: LogCreate,
+        db: Session = Depends(get_db)
     ):
     return create_log_service(db, log)
 
 
-
 @router.get("/", response_model=list[LogResponse])
 def get_all_logs(
-        service : str | None = None,
-        level : LogLevel | None = None,
-        ip_address : str | None = None,
+        service: str | None = None,
+        level: LogLevel | None = None,
+        ip_address: str | None = None,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
-        limit : int = 100,
-        offset : int = 0,
-        db : Session = Depends(get_db)
+        limit: int = 100,
+        offset: int = 0,
+        db: Session = Depends(get_db)
     ):
     return get_logs(service, level, ip_address, db, limit, offset, start_time, end_time)

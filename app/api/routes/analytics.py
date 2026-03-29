@@ -9,8 +9,13 @@ from app.services.threat_score import (
     top_threat_ips,
     top_threat_actors,
 )
+from app.core.security import require_api_key
 
-router = APIRouter(prefix="/analytics", tags=["analytics"])
+router = APIRouter(
+    prefix="/analytics",
+    tags=["analytics"],
+    dependencies=[Depends(require_api_key)],
+)
 
 
 # ── Summary KPIs ─────────────────────────────────────────────────────────────

@@ -11,3 +11,9 @@ class AlertSeverity(str, enum.Enum):
     MEDIUM   = "MEDIUM"
     HIGH     = "HIGH"
     CRITICAL = "CRITICAL"
+
+class AlertStatus(str, enum.Enum):
+    OPEN            = "OPEN"
+    ACKNOWLEDGED    = "ACKNOWLEDGED"
+    RESOLVED        = "RESOLVED"
+    FALSE_POSITIVE  = "FALSE_POSITIVE"
