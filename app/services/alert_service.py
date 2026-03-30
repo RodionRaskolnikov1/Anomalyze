@@ -66,3 +66,37 @@ def update_alert(db: Session, alert_id: str, payload: AlertUpdate) -> Alert:
     db.commit()
     db.refresh(alert)
     return alert
+
+async def create_alert_and_broadcast(db: Session, alert: Alert) -> None:
+    """
+    Persist an alert to the DB and broadcast it over WebSocket.
+
+    This is the single choke point that guarantees every alert written
+    anywhere in the system (rule-based or ML) also gets pushed to all
+    connected WebSocket clients.
+
+    Why async?
+      Broadcasting over WebSocket requires await. The detection service
+      and ml_runner call this from sync scheduler jobs — they should use
+      asyncio.run() or the sync helper below instead.
+    """
+    from app.core.ws_manager import manager
+
+    db.add(alert)
+    db.commit()
+    db.refresh(alert)
+
+    # Build a serialisable dict for broadcast
+    alert_data = {
+        "id":          str(alert.id),
+        "rule_name":   alert.rule_name,
+        "severity":    alert.severity,
+        "ip_address":  alert.ip_address,
+        "actor_id":    alert.actor_id,
+        "description": alert.description,
+        "status":      alert.status,
+        "created_at":  str(alert.created_at),
+        "context":     alert.context,
+    }
+
+    await manager.broadcast(alert_data)

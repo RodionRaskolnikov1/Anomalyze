@@ -10,6 +10,7 @@ from app.services.threat_score import (
     top_threat_actors,
 )
 from app.core.security import require_api_key
+from app.models.training_log import ModelTrainingLog
 
 router = APIRouter(
     prefix="/analytics",
@@ -21,7 +22,7 @@ router = APIRouter(
 # ── Summary KPIs ─────────────────────────────────────────────────────────────
 
 @router.get("/summary")
-def get_summary(
+async def get_summary(
     hours: int = Query(24, ge=1, le=168),
     db: Session = Depends(get_db),
 ):
@@ -35,7 +36,7 @@ def get_summary(
 # ── Time-series ───────────────────────────────────────────────────────────────
 
 @router.get("/alerts-over-time")
-def get_alerts_over_time(
+async def get_alerts_over_time(
     hours: int          = Query(24, ge=1, le=168),
     bucket_minutes: int = Query(30, ge=5, le=360),
     db: Session         = Depends(get_db),
@@ -50,7 +51,7 @@ def get_alerts_over_time(
 # ── Pie / Donut ───────────────────────────────────────────────────────────────
 
 @router.get("/severity-distribution")
-def get_severity_distribution(
+async def get_severity_distribution(
     hours: int = Query(24, ge=1, le=168),
     db: Session = Depends(get_db),
 ):
@@ -61,7 +62,7 @@ def get_severity_distribution(
 # ── Bar chart ─────────────────────────────────────────────────────────────────
 
 @router.get("/rule-breakdown")
-def get_rule_breakdown(
+async def get_rule_breakdown(
     hours: int = Query(24, ge=1, le=168),
     limit: int = Query(15, ge=1, le=50),
     db: Session = Depends(get_db),
@@ -73,7 +74,7 @@ def get_rule_breakdown(
 # ── Heatmap ───────────────────────────────────────────────────────────────────
 
 @router.get("/hourly-heatmap")
-def get_hourly_heatmap(
+async def get_hourly_heatmap(
     days: int = Query(7, ge=1, le=30),
     db: Session = Depends(get_db),
 ):
@@ -87,7 +88,7 @@ def get_hourly_heatmap(
 # ── Top attacking IPs ─────────────────────────────────────────────────────────
 
 @router.get("/top-ips")
-def get_top_ips(
+async def get_top_ips(
     hours: int = Query(24, ge=1, le=168),
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
@@ -99,7 +100,7 @@ def get_top_ips(
 # ── Threat scoring ────────────────────────────────────────────────────────────
 
 @router.get("/threat-score/ip/{ip_address}")
-def get_ip_threat_score(
+async def get_ip_threat_score(
     ip_address: str,
     window_hours: int = Query(24, ge=1, le=168),
     db: Session = Depends(get_db),
@@ -113,7 +114,7 @@ def get_ip_threat_score(
 
 
 @router.get("/threat-score/actor/{actor_id}")
-def get_actor_threat_score(
+async def get_actor_threat_score(
     actor_id: str,
     window_hours: int = Query(24, ge=1, le=168),
     db: Session = Depends(get_db),
@@ -123,7 +124,7 @@ def get_actor_threat_score(
 
 
 @router.get("/threat-leaderboard/ips")
-def get_top_threat_ips(
+async def get_top_threat_ips(
     window_hours: int = Query(24, ge=1, le=168),
     limit: int        = Query(20, ge=1, le=100),
     db: Session       = Depends(get_db),
@@ -136,10 +137,56 @@ def get_top_threat_ips(
 
 
 @router.get("/threat-leaderboard/actors")
-def get_top_threat_actors(
+async def get_top_threat_actors(
     window_hours: int = Query(24, ge=1, le=168),
     limit: int        = Query(20, ge=1, le=100),
     db: Session       = Depends(get_db),
 ):
     """Ranked list of top threat actors by composite score."""
     return top_threat_actors(db, window_hours=window_hours, limit=limit)
+
+
+# ── ML Training Audit Log ─────────────────────────────────────────────────────
+
+@router.get("/training-history")
+async def get_training_history(
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns the N most recent ML training run records.
+
+    Each entry shows: when it ran, whether it succeeded/skipped/failed,
+    how many samples were used, the anomaly rate on the training set,
+    and how long it took.
+
+    Use this to:
+      - Confirm the model is being retrained regularly
+      - Detect if training has been silently skipping (low data volume)
+      - Monitor anomaly_rate drift over time — if it climbs well above
+        the contamination parameter (0.05), the model baseline may need attention
+    """
+    rows = (
+        db.query(ModelTrainingLog)
+        .order_by(ModelTrainingLog.trained_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        {
+            "id":                    str(r.id),
+            "trained_at":            r.trained_at,
+            "status":                r.status,
+            "sample_count":          r.sample_count,
+            "feature_count":         r.feature_count,
+            "contamination":         r.contamination,
+            "n_estimators":          r.n_estimators,
+            "training_days":         r.training_days,
+            "anomalies_on_train_set": r.anomalies_on_train_set,
+            "anomaly_rate":          r.anomaly_rate,
+            "elapsed_seconds":       r.elapsed_seconds,
+            "notes":                 r.notes,
+        }
+        for r in rows
+    ]

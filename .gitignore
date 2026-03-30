@@ -1,33 +1,52 @@
-# Environment - NEVER commit real credentials
-.env
- 
 # Python
 __pycache__/
 *.py[cod]
 *.pyo
-.Python
-*.egg-info/
-dist/
-build/
- 
-# Virtual envs
+*.pyd
+
+# Virtual Environment
 env/
 venv/
 .venv/
- 
-# Database files
+
+# Environment variables
+.env
+.env.*
+
+# Database
 *.db
 *.sqlite3
- 
-# ML model artifacts
+
+# Logs
+*.log
+
+# Models (VERY IMPORTANT - don't push trained models)
+models/
 *.pkl
-*.joblib
- 
-# IDE
+
+# IDEs / Editors
 .vscode/
 .idea/
 *.swp
- 
-# OS
+*.swo
+
+# OS files
 .DS_Store
 Thumbs.db
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build files
+dist/
+build/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Temporary files
+tmp/
+temp/
