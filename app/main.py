@@ -14,7 +14,11 @@ from app.ml.trainer import train_model
 from app.db.database import SessionLocal
 
 from app.models import log, alerts as alerts_model  
-from app.models import training_log                  
+from app.models import training_log          
+
+from pathlib import Path        
+
+BASE_DIR = Path(__file__).parent.parent
 
 Base.metadata.create_all(bind=engine)
 
@@ -38,7 +42,7 @@ app.include_router(health.router)
 
 @app.get("/dashboard")
 async def dashboard():
-    return FileResponse("frontend/dashboard.html", media_type="text/html")
+    return FileResponse(BASE_DIR / "frontend" / "dashboard.html", media_type="text/html")
 
 
 def training_job():
