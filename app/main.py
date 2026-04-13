@@ -18,7 +18,7 @@ from app.models import training_log
 
 from pathlib import Path        
 
-BASE_DIR = Path(__file__).parent.parent
+BASE_DIR = Path(__file__).parent
 
 Base.metadata.create_all(bind=engine)
 
@@ -46,6 +46,7 @@ async def dashboard():
 
 
 def training_job():
+    
     db = SessionLocal()
     try:
         train_model(db)
