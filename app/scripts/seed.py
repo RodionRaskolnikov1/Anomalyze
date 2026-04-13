@@ -7,13 +7,13 @@ from datetime import datetime, timedelta, timezone
 # ── Make sure app is importable from project root ─────────────────
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from app.db.database import SessionLocal, Base, engine1
+from app.db.database import SessionLocal, Base, engine
 from app.models.log import Log
 from app.core.enums import LogLevel
 
 # Create tables if they don't exist yet
 from app.models import log, alerts as alerts_model, training_log  # noqa
-Base.metadata.create_all(bind=engine1)
+Base.metadata.create_all(bind=engine)
 
 random.seed(42)
 
