@@ -19,6 +19,14 @@ The system processes logs, builds behavioral features per IP, and detects anomal
 
 ---
 
+## 🔑 Live Demo
+**Swagger UI:** https://anomalyze-5ayj.onrender.com/docs
+
+Click **Authorize 🔒** and enter your API key to test all endpoints.
+
+> Free tier — may take ~30s to wake up on first visit.
+
+
 ## ⚙️ Tech Stack
 
 * **Backend:** FastAPI
