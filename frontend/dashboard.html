@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anomalyze — Threat Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #03050a;
+    --bg1: #070c14;
+    --bg2: #0c1220;
+    --bg3: #101929;
+    --border: rgba(255,255,255,0.06);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8edf5;
+    --text2: #7a8fa8;
+    --text3: #3d5166;
+    --accent: #00e5ff;
+    --accent2: #0099bb;
+    --red: #ff3b5c;
+    --orange: #ff8c42;
+    --green: #00d97e;
+    --purple: #9b71f5;
+    --font: 'Space Grotesk', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  html, body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  body { display: flex; flex-direction: column; }
+
+  .noise {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    background-size: 200px;
+  }
+
+  .page { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 24px 28px; }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 32px;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-mark {
+    width: 42px; height: 42px; border: 1px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .brand-mark::after {
+    content: ''; position: absolute; inset: 3px;
+    border: 1px solid rgba(0,229,255,0.2);
+  }
+  .brand-mark svg { width: 20px; height: 20px; stroke: var(--accent); fill: none; stroke-width: 1.5; }
+  .brand-name {
+    font-size: 22px; font-weight: 600; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--text);
+  }
+  .brand-sub { font-size: 11px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; font-family: var(--mono); margin-top: 2px; }
+
+  .header-right { display: flex; align-items: center; gap: 20px; }
+  .live-badge {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 11px; font-family: var(--mono); color: var(--text2); letter-spacing: 1px;
+  }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 2s ease infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .time-display { font-family: var(--mono); font-size: 12px; color: var(--text3); }
+
+  /* ── AUTH GATE ── */
+  .auth-gate {
+    border: 1px solid rgba(255,59,92,0.3); background: rgba(255,59,92,0.04);
+    padding: 20px 24px; margin-bottom: 28px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .auth-gate.hidden { display: none; }
+  .auth-icon { width: 18px; height: 18px; stroke: var(--red); fill: none; stroke-width: 1.5; flex-shrink: 0; }
+  .auth-label { font-size: 12px; color: var(--red); font-family: var(--mono); letter-spacing: 0.5px; white-space: nowrap; }
+  .auth-gate input {
+    flex: 1; background: rgba(0,0,0,0.4); border: 1px solid var(--border2);
+    color: var(--text); padding: 10px 14px; font-family: var(--mono); font-size: 12px;
+    outline: none; letter-spacing: 1px;
+  }
+  .auth-gate input:focus { border-color: var(--accent); }
+  .auth-gate input::placeholder { color: var(--text3); }
+  .connect-btn {
+    padding: 10px 20px; background: transparent; border: 1px solid var(--accent);
+    color: var(--accent); font-family: var(--mono); font-size: 12px; cursor: pointer;
+    letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s; white-space: nowrap;
+  }
+  .connect-btn:hover { background: var(--accent); color: var(--bg); }
+
+  /* ── TIME FILTER ── */
+  .controls { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
+  .controls-label { font-size: 10px; color: var(--text3); font-family: var(--mono); letter-spacing: 1.5px; text-transform: uppercase; margin-right: 4px; }
+  .tf {
+    padding: 5px 14px; background: transparent; border: 1px solid var(--border);
+    color: var(--text3); font-family: var(--mono); font-size: 11px; cursor: pointer;
+    letter-spacing: 1px; transition: all 0.15s;
+  }
+  .tf:hover { border-color: var(--border2); color: var(--text2); }
+  .tf.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.05); }
+
+  /* ── KPI ROW ── */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1px; margin-bottom: 24px; background: var(--border); }
+  .kpi {
+    background: var(--bg1); padding: 22px 24px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .kpi-label { font-size: 10px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; font-family: var(--mono); }
+  .kpi-value { font-size: 40px; font-weight: 300; line-height: 1; letter-spacing: -1px; }
+  .kpi-value.accent { color: var(--accent); }
+  .kpi-value.red { color: var(--red); }
+  .kpi-value.orange { color: var(--orange); }
+  .kpi-value.green { color: var(--green); }
+  .kpi-foot { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+  /* ── MAIN GRID ── */
+  .main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 1px; background: var(--border); margin-bottom: 1px; }
+
+  /* ── PANEL ── */
+  .panel { background: var(--bg1); padding: 22px 24px; }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
+  }
+  .panel-title { font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--text3); font-family: var(--mono); }
+  .panel-tag { font-size: 10px; font-family: var(--mono); color: var(--accent); letter-spacing: 1px; }
+
+  /* ── ALERTS TABLE ── */
+  .alert-table { width: 100%; border-collapse: collapse; }
+  .alert-table th { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text3); font-family: var(--mono); font-weight: 400; padding: 0 0 10px; text-align: left; }
+  .alert-table td { padding: 10px 0; border-top: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
+  .alert-table tr:hover td { background: rgba(255,255,255,0.015); }
+  .sev-chip {
+    display: inline-block; padding: 3px 8px; font-size: 9px; font-family: var(--mono);
+    letter-spacing: 1px; text-transform: uppercase; font-weight: 500;
+  }
+  .sev-chip.HIGH { background: rgba(255,59,92,0.12); color: var(--red); border: 1px solid rgba(255,59,92,0.2); }
+  .sev-chip.MEDIUM { background: rgba(255,140,66,0.12); color: var(--orange); border: 1px solid rgba(255,140,66,0.2); }
+  .sev-chip.LOW { background: rgba(0,229,255,0.08); color: var(--accent); border: 1px solid rgba(0,229,255,0.15); }
+  .sev-chip.CRITICAL { background: rgba(155,113,245,0.12); color: var(--purple); border: 1px solid rgba(155,113,245,0.2); }
+  .ip-mono { font-family: var(--mono); font-size: 11px; color: var(--text2); }
+  .rule-mono { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+  .status-open { font-family: var(--mono); font-size: 9px; color: var(--green); letter-spacing: 1px; }
+
+  /* ── THREAT BOARD ── */
+  .threat-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .threat-item:last-child { border-bottom: none; }
+  .threat-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .threat-num { font-size: 10px; color: var(--text3); font-family: var(--mono); width: 18px; }
+  .threat-ip { font-family: var(--mono); font-size: 12px; color: var(--text); flex: 1; }
+  .threat-score-val { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  .threat-bar-bg { height: 2px; background: var(--border2); width: 100%; }
+  .threat-bar-fill { height: 2px; transition: width 0.8s ease; }
+
+  /* ── BOTTOM GRID ── */
+  .bottom-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; background: var(--border); }
+
+  /* ── CHART LABELS ── */
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text2); font-family: var(--mono); }
+  .legend-dot { width: 6px; height: 6px; }
+
+  /* ── RULE BARS ── */
+  .rule-item { padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .rule-item:last-child { border-bottom: none; }
+  .rule-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .rule-name { font-family: var(--mono); font-size: 10px; color: var(--text2); flex: 1; letter-spacing: 0.5px; }
+  .rule-count { font-family: var(--mono); font-size: 12px; color: var(--text); font-weight: 500; }
+  .rule-bar-bg { height: 1px; background: var(--border2); }
+  .rule-bar-fill { height: 1px; background: var(--accent2); transition: width 0.8s; }
+
+  /* ── MODEL STATUS ── */
+  .model-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .model-row:last-child { border-bottom: none; }
+  .model-key { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.5px; }
+  .model-val { font-family: var(--mono); font-size: 11px; color: var(--text); }
+  .model-val.ok { color: var(--green); }
+  .model-val.err { color: var(--red); }
+
+  /* ── LOADING ── */
+  .loading { font-family: var(--mono); font-size: 11px; color: var(--text3); padding: 20px 0; letter-spacing: 1px; }
+  .loading::after { content: '...'; animation: dots 1.5s steps(3) infinite; }
+  @keyframes dots { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+
+  /* ── SCAN LINE EFFECT ── */
+  .scanline {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,229,255,0.008) 2px, rgba(0,229,255,0.008) 4px);
+  }
+
+  /* ── CORNER DECORATIONS ── */
+  .corner-tl, .corner-br {
+    position: absolute; width: 12px; height: 12px;
+  }
+  .corner-tl { top: -1px; left: -1px; border-top: 1px solid var(--accent); border-left: 1px solid var(--accent); }
+  .corner-br { bottom: -1px; right: -1px; border-bottom: 1px solid var(--accent); border-right: 1px solid var(--accent); }
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<div class="scanline"></div>
+
+<div class="page">
+
+  <header class="header">
+    <div class="brand">
+      <div class="brand-mark" style="position:relative">
+        <div class="corner-tl"></div>
+        <div class="corner-br"></div>
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">Anomalyze</div>
+        <div class="brand-sub">threat intelligence</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge">
+        <div class="live-dot" id="liveDot"></div>
+        <span id="liveStatus">offline</span>
+      </div>
+      <div class="time-display" id="clockEl">--:--:--</div>
+    </div>
+  </header>
+
+  <div class="auth-gate" id="authGate">
+    <svg class="auth-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="1"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <span class="auth-label">auth required</span>
+    <input type="password" id="apiInput" placeholder="enter X-API-Key to connect dashboard" />
+    <button class="connect-btn" onclick="connect()">connect</button>
+  </div>
+
+  <div class="controls">
+    <span class="controls-label">window</span>
+    <button class="tf active" onclick="setW(24,this)">24h</button>
+    <button class="tf" onclick="setW(48,this)">48h</button>
+    <button class="tf" onclick="setW(72,this)">72h</button>
+    <button class="tf" onclick="setW(168,this)">7d</button>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">total alerts</div>
+      <div class="kpi-value accent" id="kTotal">—</div>
+      <div class="kpi-foot" id="kWindow">window: 24h</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">high severity</div>
+      <div class="kpi-value red" id="kHigh">—</div>
+      <div class="kpi-foot">high + critical</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">unique sources</div>
+      <div class="kpi-value orange" id="kIPs">—</div>
+      <div class="kpi-foot">attacking ips</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">ml engine</div>
+      <div class="kpi-value green" id="kML" style="font-size:18px;padding-top:8px">—</div>
+      <div class="kpi-foot" id="kMLsub">isolation forest</div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">recent alerts</span>
+        <span class="panel-tag" id="alertTag">— events</span>
+      </div>
+      <div id="alertsBody"><div class="loading">awaiting connection</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">threat leaderboard</span>
+        <span class="panel-tag">by score</span>
+      </div>
+      <div id="threatsBody"><div class="loading">standby</div></div>
+    </div>
+  </div>
+
+  <div class="bottom-grid">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">severity split</span>
+      </div>
+      <div class="chart-legend" id="sevLegend"></div>
+      <div style="position:relative;height:160px">
+        <canvas id="sevChart" role="img" aria-label="Donut chart showing alert severity distribution">Severity distribution loading.</canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">detection rules</span>
+        <span class="panel-tag">top triggered</span>
+      </div>
+      <div id="rulesBody"><div class="loading">standby</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">system status</span>
+      </div>
+      <div id="sysBody"><div class="loading">standby</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const BASE = 'https://anomalyze-5ayj.onrender.com';
+let KEY = '', hours = 24, donut = null, timer = null;
+
+setInterval(() => {
+  document.getElementById('clockEl').textContent = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+}, 1000);
+
+function setW(h, btn) {
+  hours = h;
+  document.querySelectorAll('.tf').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('kWindow').textContent = 'window: ' + h + 'h';
+  if (KEY) load();
+}
+
+function connect() {
+  const k = document.getElementById('apiInput').value.trim();
+  if (!k) return;
+  KEY = k;
+  document.getElementById('authGate').classList.add('hidden');
+  load();
+  if (timer) clearInterval(timer);
+  timer = setInterval(load, 90000);
+}
+
+async function get(path) {
+  const r = await fetch(BASE + path, { headers: { 'X-API-Key': KEY } });
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+async function load() {
+  document.getElementById('liveDot').style.background = '#ffa502';
+  try {
+    const [sum, alerts, threats, sev, rules, health] = await Promise.all([
+      get('/analytics/summary?hours=' + hours),
+      get('/alerts/?limit=10'),
+      get('/analytics/threat-leaderboard/ips?limit=7&window_hours=' + hours),
+      get('/analytics/severity-distribution?hours=' + hours),
+      get('/analytics/rule-breakdown?hours=' + hours + '&limit=6'),
+      fetch(BASE + '/health').then(r => r.json()),
+    ]);
+    paintKPIs(sum, health);
+    paintAlerts(alerts);
+    paintThreats(threats);
+    paintSev(sev);
+    paintRules(rules);
+    paintSys(health);
+    document.getElementById('liveDot').style.background = '#00d97e';
+    document.getElementById('liveStatus').textContent = 'live · ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  } catch(e) {
+    document.getElementById('liveDot').style.background = '#ff3b5c';
+    document.getElementById('liveStatus').textContent = 'error';
+  }
+}
+
+function paintKPIs(s, h) {
+  document.getElementById('kTotal').textContent = s.total_alerts ?? 0;
+  document.getElementById('kHigh').textContent = (s.high_alerts || 0) + (s.critical_alerts || 0);
+  document.getElementById('kIPs').textContent = s.unique_ips ?? 0;
+  const ml = h?.checks?.ml_model;
+  if (ml) {
+    const loaded = ml.status === 'loaded';
+    document.getElementById('kML').textContent = loaded ? 'ACTIVE' : 'OFFLINE';
+    document.getElementById('kML').className = 'kpi-value ' + (loaded ? 'green' : 'red');
+    document.getElementById('kMLsub').textContent = 'last run: ' + (ml.last_training_status || '—');
+  }
+}
+
+function paintAlerts(data) {
+  document.getElementById('alertTag').textContent = data.length + ' events';
+  if (!data.length) { document.getElementById('alertsBody').innerHTML = '<div class="loading">no alerts in window</div>'; return; }
+  document.getElementById('alertsBody').innerHTML = `
+    <table class="alert-table">
+      <thead><tr>
+        <th>sev</th><th>rule</th><th>source ip</th><th>actor</th><th>status</th><th>time</th>
+      </tr></thead>
+      <tbody>
+        ${data.map(a => {
+          const sev = a.severity || 'LOW';
+          const t = a.created_at ? new Date(a.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—';
+          const rule = (a.rule_name || '').replace(/_/g,' ').toLowerCase();
+          return `<tr>
+            <td><span class="sev-chip ${sev}">${sev}</span></td>
+            <td class="rule-mono">${rule}</td>
+            <td class="ip-mono">${a.ip_address || '—'}</td>
+            <td class="ip-mono" style="color:#3d5166">${a.actor_id || '—'}</td>
+            <td><span class="status-open">${(a.status||'open').toLowerCase()}</span></td>
+            <td class="rule-mono">${t}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function paintThreats(data) {
+  const list = data.threat_ips || data || [];
+  if (!list.length) { document.getElementById('threatsBody').innerHTML = '<div class="loading">no data</div>'; return; }
+  const max = Math.max(...list.map(t => t.score || t.threat_score || 0), 1);
+  document.getElementById('threatsBody').innerHTML = list.map((t, i) => {
+    const score = Math.round(t.score || t.threat_score || 0);
+    const ip = t.ip_address || t.ip || '—';
+    const pct = Math.round((score / max) * 100);
+    const col = score > 70 ? '#ff3b5c' : score > 40 ? '#ff8c42' : '#00e5ff';
+    const tier = t.tier || (score > 70 ? 'critical' : score > 40 ? 'high' : 'low');
+    return `<div class="threat-item">
+      <div class="threat-top">
+        <div class="threat-num">${String(i+1).padStart(2,'0')}</div>
+        <div class="threat-ip">${ip}</div>
+        <div class="threat-score-val" style="color:${col}">${score}</div>
+      </div>
+      <div class="threat-bar-bg"><div class="threat-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function paintSev(data) {
+  const dist = data.distribution || data || [];
+  const cols = { HIGH:'#ff3b5c', MEDIUM:'#ff8c42', LOW:'#00e5ff', CRITICAL:'#9b71f5' };
+  const labels = dist.map(d => d.severity || d.label || '');
+  const vals = dist.map(d => d.count || d.value || 0);
+  const bgs = labels.map(l => cols[l] || '#00e5ff');
+  const total = vals.reduce((a,b)=>a+b,0);
+
+  document.getElementById('sevLegend').innerHTML = dist.map((d,i) => {
+    const pct = total ? Math.round((vals[i]/total)*100) : 0;
+    return `<div class="legend-item">
+      <div class="legend-dot" style="background:${bgs[i]}"></div>
+      <span>${labels[i].toLowerCase()} ${pct}%</span>
+    </div>`;
+  }).join('');
+
+  if (donut) donut.destroy();
+  donut = new Chart(document.getElementById('sevChart').getContext('2d'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: vals, backgroundColor: bgs, borderWidth: 0 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '75%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + c.label + ': ' + c.raw } } }
+    }
+  });
+}
+
+function paintRules(data) {
+  const rules = data.rules || data || [];
+  if (!rules.length) { document.getElementById('rulesBody').innerHTML = '<div class="loading">no data</div>'; return; }
+  const max = Math.max(...rules.map(r => r.count || 0), 1);
+  document.getElementById('rulesBody').innerHTML = rules.map(r => {
+    const pct = Math.round(((r.count||0)/max)*100);
+    const name = (r.rule_name || r.rule || '').replace(/_/g,' ').toLowerCase();
+    return `<div class="rule-item">
+      <div class="rule-top">
+        <div class="rule-name">${name}</div>
+        <div class="rule-count">${r.count || 0}</div>
+      </div>
+      <div class="rule-bar-bg"><div class="rule-bar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function paintSys(h) {
+  const ml = h?.checks?.ml_model;
+  const db = h?.checks?.database;
+  const ws = h?.checks?.websocket;
+  if (!ml) return;
+  const fmt = (v) => v ? new Date(v).toLocaleDateString() + ' ' + new Date(v).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—';
+  document.getElementById('sysBody').innerHTML = [
+    ['ml status', ml.status, ml.status==='loaded'?'ok':'err'],
+    ['training', ml.last_training_status || '—', ml.last_training_status==='SUCCESS'?'ok':''],
+    ['last trained', fmt(ml.last_training_at), ''],
+    ['model file', ml.model_file ? 'isolation_forest.pkl' : 'missing', ml.model_file?'ok':'err'],
+    ['database', db?.status || '—', db?.status==='ok'?'ok':'err'],
+    ['ws connections', ws?.active_connections ?? 0, ''],
+    ['api status', h.status || '—', h.status==='healthy'?'ok':'err'],
+  ].map(([k,v,c]) => `<div class="model-row">
+    <div class="model-key">${k}</div>
+    <div class="model-val ${c}">${v}</div>
+  </div>`).join('');
+}
+</script>
+</body>
+</html>

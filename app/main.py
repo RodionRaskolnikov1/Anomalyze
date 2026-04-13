@@ -2,6 +2,7 @@ from app.db.database import Base, engine
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from app.api.routes import logs, alerts, analytics
 from app.api.routes import ws      
@@ -32,6 +33,12 @@ app.include_router(alerts.router)
 app.include_router(analytics.router)
 app.include_router(ws.router)    
 app.include_router(health.router)  
+
+
+
+@app.get("/dashboard")
+async def dashboard():
+    return FileResponse("frontend/dashboard.html", media_type="text/html")
 
 
 def training_job():
