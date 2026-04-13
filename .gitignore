@@ -21,7 +21,7 @@ venv/
 *.log
 
 # Models (VERY IMPORTANT - don't push trained models)
-models/
+/models/
 *.pkl
 
 # IDEs / Editors
