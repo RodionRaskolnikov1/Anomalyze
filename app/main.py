@@ -18,7 +18,7 @@ from app.models import training_log
 
 from pathlib import Path        
 
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).parent.parent
 
 Base.metadata.create_all(bind=engine)
 
@@ -39,13 +39,13 @@ app.include_router(ws.router)
 app.include_router(health.router)  
 
 
+
 @app.get("/dashboard")
 async def dashboard():
     return FileResponse(BASE_DIR / "frontend" / "dashboard.html", media_type="text/html")
 
 
 def training_job():
-    
     db = SessionLocal()
     try:
         train_model(db)
