@@ -40,6 +40,15 @@ app.include_router(health.router)
 
 
 
+@app.get("/debug-path")
+async def debug_path():
+    p = BASE_DIR / "frontend" / "dashboard.html"
+    return {
+        "base_dir": str(BASE_DIR),
+        "full_path": str(p),
+        "exists": p.exists()
+    }
+
 @app.get("/dashboard")
 async def dashboard():
     return FileResponse(BASE_DIR / "frontend" / "dashboard.html", media_type="text/html")
