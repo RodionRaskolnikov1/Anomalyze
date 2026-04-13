@@ -26,6 +26,7 @@ Click **Authorize 🔒** and enter your API key to test all endpoints.
 
 > Free tier — may take ~30s to wake up on first visit.
 
+---
 
 ## ⚙️ Tech Stack
 
